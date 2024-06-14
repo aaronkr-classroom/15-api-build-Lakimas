@@ -36,19 +36,87 @@ module.exports = {
    * Listing 28.1, 3 (p. 407, 410)
    * usersController.js에서 API 토큰의 검증을 위한 미들웨어 함수의 추가
    */
-  verifyToken: () => {},
+  verifyToken: (req, res, next) => {
+    let token = req.query.apiToken; // 요청 쿼리에서 API 토큰을 가져옴
+    if (token) {
+      // API 토큰으로 사용자를 검색
+      User.findOne({ apiToken: token })
+        .then(user => {
+          if (user) next(); // 사용자가 검색되면 next 호출
+          else next(new Error("Invalid API token.")); // 사용자가 검색되지 않으면 에러 호출
+        })
+        .catch(error => {
+          next(new Error(error.message)); // 에러 처리기로 에러 전달
+        });
+    } else {
+      next(new Error("Invalid API token.")); // 토큰이 없을 경우 에러 호출
+    }
+  },
 
   /**
    * Listing 28.4 (p. 413)
    * @TODO: usersController.js에서 API를 위한 로그인 액션 생성
    */
-  apiAuthenticate: () => {},
+  apiAuthenticate: (req, res, next) => {
+    passport.authenticate("local", (errors, user) => {
+    if (user) {
+      let signedToken = jsonWebToken.sign(
+        {
+          data: user._id,
+          exp: new Date().setDate(new Date().getDate() + 1)
+        },
+        "secret_encoding_passphrase"
+      );
+      res.json({
+        success: true,
+        token: signedToken
+      });
+    } else
+      res.json({
+        success: false,
+        message: "Could not authenticate user."
+      });
+    })(req, res, next);
+  },
 
   /**
    * Listing 28.6 (p. 414-415)
    * userController.js에서 API를 위한 유효성 체크 액션 생성
    */
-  verifyJWT: () => {},
+  verifyJWT: (req, res, next) => {
+    let token = req.headers.token; // 요청 헤더에서 JWT 토큰 추출
+    if (token) {
+      jsonWebToken.verify(
+        token, 
+        "secret_encoding_passphrase", // JWT를 검사하고 페이로드 확인
+        (errors, payload) => {
+          if (payload) {
+            User.findById(payload.data).then(user => { // JWT 페이로드로부터 사용자 ID로 사용자 찾기
+              if (user) {
+                next(); // 사용자가 존재하면 다음 미들웨어 호출
+              } else {
+                res.status(httpStatus.FORBIDDEN).json({
+                  error: true,
+                  message: "No User account found." // 사용자가 존재하지 않으면 에러 메시지 응답
+                });
+              }
+            });
+          } else {
+            res.status(httpStatus.UNAUTHORIZED).json({
+              error: true,
+              message: "Cannot verify API token." // JWT 페이로드가 없으면 에러 메시지 응답
+            });
+            next();
+          }
+        }
+      );
+    } else {
+      res.status(httpStatus.UNAUTHORIZED).json({
+        error: true,
+        message: "Provide Token" // 토큰이 제공되지 않으면 에러 메시지 응답
+      });
+    }
+  },
 
   /**
    * Listing 23.3 (p. 336)
@@ -106,6 +174,23 @@ module.exports = {
      * Listing 26.3 (p. 384)
      * @TODO: userController.js에서 쿼리 매개변수가 존재할 때 JSON으로 응답하기
      */
+    verifyToken: (req, res, next) => {
+      let token = req.query.apiToken; // 요청 쿼리에서 API 토큰을 가져옴
+      if (token) {
+        // API 토큰으로 사용자를 검색
+        User.findOne({ apiToken: token })
+          .then(user => {
+            if (user) next(); // 사용자가 검색되면 next 호출
+            else next(new Error("Invalid API token.")); // 사용자가 검색되지 않으면 에러 호출
+          })
+          .catch(error => {
+            next(new Error(error.message)); // 에러 처리기로 에러 전달
+          });
+      } else {
+        next(new Error("Invalid API token.")); // 토큰이 없을 경우 에러 호출
+      }
+    }
+
     if (req.query.format === "json") {
       res.json(res.locals.users);
     } else {

@@ -10,7 +10,7 @@
 // modules
 const express = require("express"), // express를 요청
   layouts = require("express-ejs-layouts"), // express-ejs-layout의 요청
-  router = require("./routes.TODO/index"), // 라우터를 요청 (@TODO: Lesson 26)
+  router = require("./routes/index"), // 라우터를 요청 (@TODO: Lesson 26)
   app = express(); // express 애플리케이션의 인스턴스화
 
 // @TODO: Lesson 26: controllers 파일의 요청 삭제
